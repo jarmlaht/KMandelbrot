@@ -6,13 +6,11 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 
-const val COLOR_INSIDE = 0xFF000000.toInt() // black, ARGB
-const val COLOR_OUTSIDE = 0xFFFFFFFF.toInt() // white, ARGB
-
 /**
  * Calculates the image for [viewport] in bands of [bandRows] rows.
  * One worker coroutine per CPU core runs on Dispatchers.Default; each takes the next
  * unclaimed band from a shared counter, so bands complete roughly top to bottom.
+ * Each pixel is coloured by its escape iteration count, see [iterationColors].
  * [onBand] is called once per band with its first row and its pixels (row-major, ARGB).
  * Cancelling the calling coroutine stops the workers.
  */
@@ -25,6 +23,7 @@ suspend fun renderMandelbrot(
     val height = viewport.height
     val bandCount = (height + bandRows - 1) / bandRows
     val nextBand = AtomicInteger(0)
+    val colors = iterationColors()
     val workerCount = minOf(Runtime.getRuntime().availableProcessors(), bandCount)
 
     coroutineScope {
@@ -41,8 +40,7 @@ suspend fun renderMandelbrot(
                         val im = viewport.im(firstRow + row)
                         val offset = row * width
                         for (x in 0 until width) {
-                            pixels[offset + x] =
-                                if (isInMandelbrotSet(viewport.re(x), im)) COLOR_INSIDE else COLOR_OUTSIDE
+                            pixels[offset + x] = colors[escapeIterations(viewport.re(x), im)]
                         }
                     }
                     onBand(firstRow, pixels)

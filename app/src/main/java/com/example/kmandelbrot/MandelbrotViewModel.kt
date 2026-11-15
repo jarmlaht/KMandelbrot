@@ -29,7 +29,7 @@ class MandelbrotViewModel : ViewModel() {
     /**
      * Called with the canvas size in pixels. Does nothing if the size is unchanged
      * (so a configuration change that keeps the size does not re-render).
-     * Otherwise cancels the running render, creates a white bitmap of the new size,
+     * Otherwise cancels the running render, creates a transparent bitmap of the new size,
      * and starts a new render.
      */
     fun onSizeChanged(width: Int, height: Int) {
@@ -39,7 +39,6 @@ class MandelbrotViewModel : ViewModel() {
 
         renderJob?.cancel()
         val bitmap = createBitmap(width, height)
-        bitmap.eraseColor(COLOR_OUTSIDE)
         image = bitmap.asImageBitmap()
 
         val viewport = Viewport.fitWholeSet(width, height)

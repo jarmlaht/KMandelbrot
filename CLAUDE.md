@@ -6,7 +6,7 @@ Guidance for Claude Code when working in this repository.
 
 KMandelbrot is an Android app, written in Kotlin, that draws the Mandelbrot fractal full screen.
 
-Current state: milestone 1 is implemented (static black-and-white render, full screen, both orientations). Zoom and pan are not implemented yet.
+Current state: the app renders the whole set full screen in both orientations, black inside the set and coloured outside it by escape iteration count on a red-to-yellow gradient. Zoom and pan are not implemented yet.
 
 ## Product requirements
 
@@ -16,11 +16,12 @@ Current state: milestone 1 is implemented (static black-and-white render, full s
 
 ### Milestones
 
-1. **First version:** render a static black-and-white Mandelbrot set (points inside the set black, outside white) full screen, correct in both orientations.
-2. **Zoom and pan** with touch gestures.
-3. Later: colour palettes, smoother/progressive rendering, deeper zoom.
+1. **First version (done):** render a static black-and-white Mandelbrot set full screen, correct in both orientations.
+2. **Colours (done):** points inside the set black; points outside coloured by escape iteration count on a 256-colour gradient from red (`#FF0000`, far from the set) to yellow (`#FFFF00`, at its edge).
+3. **Zoom and pan** with touch gestures.
+4. Later: selectable colour palettes, smooth colouring, deeper zoom.
 
-Build only what the current milestone needs. Do not add colouring, settings screens or other extras before they are asked for.
+Build only what the current task needs. Do not add settings screens, extra palettes or other extras before they are asked for.
 
 ## Build and test
 
@@ -52,9 +53,11 @@ Keep the fractal maths separate from Android so it can be unit tested on the JVM
 - **`MainActivity`** – single `ComponentActivity`. Enables edge-to-edge, hides the system bars (shown briefly on an edge swipe) and hosts `MandelbrotScreen`. The image extends under the display cutout.
 - **`MandelbrotScreen`** – composable with one full-screen `Canvas`. Reports its pixel size to the ViewModel through `onSizeChanged` (this is what handles rotation, split-screen and unfolding) and draws the ViewModel's image.
 - **`MandelbrotViewModel`** – owns the `Bitmap` and the render job, so both survive rotation. A size change cancels the running render, creates a new bitmap and starts a new render. Each finished band is written into the bitmap on the main thread and bumps a `frame` counter that the canvas reads to redraw, which makes the image appear progressively.
-- **`renderMandelbrot`** (`MandelbrotRenderer.kt`) – plain Kotlin + coroutines, no Android imports. Calculates the image in bands of rows, in parallel, one worker per CPU core on `Dispatchers.Default`, and hands each band to a callback.
+- **`renderMandelbrot`** (`MandelbrotRenderer.kt`) – plain Kotlin + coroutines, no Android imports. Calculates the image in bands of rows, in parallel, one worker per CPU core on `Dispatchers.Default`, and hands each band to a callback. Each pixel's colour is looked up from the `iterationColors` table by its escape iteration count.
 - **`Viewport`** – plain Kotlin class holding the centre of the view in the complex plane and a scale (complex units per pixel). Converts pixel coordinates to complex coordinates. Using centre + a single scale keeps the image undistorted. `Viewport.fitWholeSet` gives the view that shows the whole set with a margin for any image size.
-- **`isInMandelbrotSet`** (`Mandelbrot.kt`) – plain Kotlin: iterate `z = z² + c` up to `MAX_ITERATIONS` (256) and report whether the point escapes (`|z| > 2`).
+- **`escapeIterations`** (`Mandelbrot.kt`) – plain Kotlin: iterate `z = z² + c` up to `MAX_ITERATIONS` (256) and return the iteration (1..256) on which the point escapes (`|z| > 2`), or `NOT_ESCAPED` (0) for a point treated as inside the set.
+- **`Palette.kt`** – plain Kotlin: `redToYellowGradient` builds the 256 gradient colours, and `iterationColors` builds the lookup table from the result of `escapeIterations` to an ARGB colour. Entry 0 is black (inside the set); entry n is the gradient colour at position ln(n) / ln(256), so the colours come in stepped bands, one fixed colour per iteration count.
+- The canvas and window backgrounds are black, and a new bitmap starts transparent, so the area that is not yet calculated is black.
 
 ### Rules that are easy to get wrong
 
@@ -69,7 +72,7 @@ Keep the fractal maths separate from Android so it can be unit tested on the JVM
 
 - Kotlin code follows `.claude/rules/kotlin-coding-standards.md` and the official Kotlin code style (`kotlin.code.style=official`).
 - Kotlin sources live under `app/src/main/java/com/example/kmandelbrot/`, with tests mirroring them in `app/src/test/` (JVM) and `app/src/androidTest/` (device).
-- Unit test the viewport mapping and the escape-time calculation; they are pure Kotlin.
+- Unit test the viewport mapping, the escape-time calculation and the palette; they are pure Kotlin.
 - User-visible strings go in `res/values/strings.xml`.
 
 ## Git
