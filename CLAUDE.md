@@ -40,7 +40,7 @@ Run from the project root (PowerShell on Windows; use `./gradlew` in Bash).
 - Single module `app`, package and namespace `com.example.kmandelbrot`.
 - AGP 9.5.1 with Gradle Kotlin DSL; `minSdk` 34, `targetSdk`/`compileSdk` 37, Java 11.
 - AGP 9 has built-in Kotlin support. Do not add the `org.jetbrains.kotlin.android` plugin.
-- The Compose compiler plugin version must equal the Kotlin version bundled with AGP (`kotlin` in the version catalog, currently 2.2.10; check with `.\gradlew.bat buildEnvironment`). Libraries built against a newer Kotlin than that will not compile, which is why coroutines is pinned to 1.10.2.
+- The Compose compiler plugin version must equal the Kotlin version bundled with AGP (`kotlin` in the version catalog, currently 2.2.10; check with `.\gradlew.bat buildEnvironment`). Avoid libraries built against a newer Kotlin than that; this is why coroutines is pinned to 1.10.2 (1.11.0 is built against Kotlin 2.2.20).
 - Dependencies are declared in the version catalog `gradle/libs.versions.toml`. Add new ones there and reference them as `libs.…`; never hard-code versions in `build.gradle.kts`. Ask before adding a dependency.
 - UI is Jetpack Compose (Compose BOM; `ui` and `foundation` only). There is no Material library yet; add Material 3 when the first real UI component is needed. AppCompat and the View-based Material library are not used.
 - The activity theme is the platform `android:Theme.Material.NoActionBar`.

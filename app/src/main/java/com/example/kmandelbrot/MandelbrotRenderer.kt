@@ -3,6 +3,7 @@ package com.example.kmandelbrot
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 
 const val COLOR_INSIDE = 0xFF000000.toInt() // black, ARGB
@@ -30,6 +31,7 @@ suspend fun renderMandelbrot(
         repeat(workerCount) {
             launch(Dispatchers.Default) {
                 while (true) {
+                    ensureActive()
                     val band = nextBand.getAndIncrement()
                     if (band >= bandCount) break
                     val firstRow = band * bandRows
