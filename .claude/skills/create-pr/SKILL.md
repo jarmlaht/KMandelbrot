@@ -33,7 +33,7 @@ git merge-tree origin/main HEAD
 ```bash
 git diff origin/main...HEAD
 ```
-- Review the implementation against the standards defined in `CLAUDE.md`.
+- Review the implementation against the standards defined in `CLAUDE.md` and `.claude/rules/`.
 - Focus on:
   - Correctness
   - Maintainability
@@ -43,7 +43,7 @@ git diff origin/main...HEAD
 ```bash
 ./gradlew lintDebug testDebugUnitTest assembleDebug
 ```
-- If any fixes were applied, stage and commit them following the Git section of `CLAUDE.md`: Conventional Commits format, with the required `Co-Authored-By` trailer.
+- If any fixes were applied, stage and commit them following `.claude/rules/git-standards.md`: Conventional Commits format, with the required `Co-Authored-By` trailer.
 - Push any fix commits:
 ```bash
 git push

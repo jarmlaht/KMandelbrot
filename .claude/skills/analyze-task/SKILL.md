@@ -21,7 +21,7 @@ gh issue view $task_number --json number,title,body,comments
 ```
 
 ### Load project context
-- Read `CLAUDE.md`.
+- Read `CLAUDE.md` and every file under `.claude/rules/`.
 - Explore the project structure and existing code before asking any questions.
 
 ### Ask clarifying questions

@@ -32,7 +32,7 @@ git pull
 ```
 
 ### Load project context
-- Read `CLAUDE.md`.
+- Read `CLAUDE.md` and every file under `.claude/rules/`.
 - Explore the existing codebase before asking any questions.
 
 ### Ask clarifying questions
@@ -54,7 +54,7 @@ git pull
 **Approval Gate: Wait for explicit user approval before proceeding.**
 
 ### Implement the approved fixes
-- Follow all standards in `CLAUDE.md`.
+- Follow all standards in `CLAUDE.md` and `.claude/rules/`.
 - Implement only the approved fixes. Do not deviate without asking for approval again.
 - After implementation, run lint, the unit tests, and the debug build (which compiles the Kotlin sources):
 ```bash
@@ -77,7 +77,7 @@ Before requesting user approval:
 
 ### Commit and push (after user approval)
 - Stage only the changed files.
-- Commit following the Git section of `CLAUDE.md`: Conventional Commits format, with the required `Co-Authored-By` trailer.
+- Commit following `.claude/rules/git-standards.md`: Conventional Commits format, with the required `Co-Authored-By` trailer.
 - Push the commits to the existing Pull Request branch. **Do NOT force push**.
 ```bash
 git push

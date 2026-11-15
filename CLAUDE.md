@@ -67,7 +67,7 @@ Keep the fractal maths separate from Android so it can be unit tested on the JVM
 
 ## Conventions
 
-- Kotlin official code style (`kotlin.code.style=official`).
+- Kotlin code follows `.claude/rules/kotlin-coding-standards.md` and the official Kotlin code style (`kotlin.code.style=official`).
 - Kotlin sources live under `app/src/main/java/com/example/kmandelbrot/`, with tests mirroring them in `app/src/test/` (JVM) and `app/src/androidTest/` (device).
 - Unit test the viewport mapping and the escape-time calculation; they are pure Kotlin.
 - User-visible strings go in `res/values/strings.xml`.
@@ -76,6 +76,5 @@ Keep the fractal maths separate from Android so it can be unit tested on the JVM
 
 - The default branch is `main`, tracking `origin/main` on GitHub.
 - Commit or push only when asked.
-- Commit messages use the Conventional Commits format (`feat: …`, `fix: …`, `chore: …`) and end with the `Co-Authored-By` trailer for Claude.
-- Task work happens on `feature/task-<number>` branches created from `main`, merged through pull requests.
+- Commit messages, branch names and pull requests follow `.claude/rules/git-standards.md`.
 - `tmp/` holds working files for the task skills (analysis, plans) and is not committed.

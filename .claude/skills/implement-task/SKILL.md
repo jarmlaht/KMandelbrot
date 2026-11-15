@@ -27,8 +27,8 @@ gh issue view $task_number --json number,title,body,comments
 - The analysis comment posted by `/analyze-task` contains key decisions and constraints. Implementation must reflect those decisions.
 
 ### Load project context
-- Read `CLAUDE.md` and explore the existing codebase.
-- Every decision in the implementation must comply with `CLAUDE.md`.
+- Read `CLAUDE.md`, every file under `.claude/rules/`, and explore the existing codebase.
+- Every decision in the implementation must comply with them.
 
 ### Draft implementation plan
 - Create `tmp/` if it does not exist.
@@ -51,7 +51,7 @@ git checkout -b feature/task-$task_number
 - Never branch from another feature branch.
 
 ### Implement
-- Follow all standards in `CLAUDE.md`.
+- Follow all standards in `CLAUDE.md` and `.claude/rules/`.
 - Implement the approved plan exactly.
 - Do not deviate from the approved implementation plan without asking for approval again.
 - Add or update unit tests for any pure Kotlin logic that changed.
@@ -79,7 +79,7 @@ Before requesting user approval:
 
 ### Commit and push (after user approval)
 - Stage only the changed files.
-- Commit following the Git section of `CLAUDE.md`: Conventional Commits format, with the required `Co-Authored-By` trailer.
+- Commit following `.claude/rules/git-standards.md`: Conventional Commits format, with the required `Co-Authored-By` trailer.
 - Push the branch:
 ```bash
 git push -u origin feature/task-$task_number
