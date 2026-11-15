@@ -14,7 +14,7 @@ fun MandelbrotScreen(viewModel: MandelbrotViewModel = viewModel()) {
     Canvas(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(Color.Black)
             .onSizeChanged { viewModel.onSizeChanged(it.width, it.height) }
     ) {
         viewModel.frame // read so each new band redraws the canvas

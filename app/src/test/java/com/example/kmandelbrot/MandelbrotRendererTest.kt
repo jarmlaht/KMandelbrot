@@ -34,17 +34,18 @@ class MandelbrotRendererTest {
     }
 
     @Test
-    fun everyPixelMatchesTheSetMembershipOfItsCoordinates() {
+    fun everyPixelHasTheColourOfItsEscapeIterationCount() {
         val bands = render()
+        val colors = iterationColors()
 
         var insideCount = 0
         for ((firstRow, pixels) in bands) {
             for (i in pixels.indices) {
                 val x = i % viewport.width
                 val y = firstRow + i / viewport.width
-                val inside = isInMandelbrotSet(viewport.re(x), viewport.im(y))
-                assertEquals("pixel ($x, $y)", if (inside) COLOR_INSIDE else COLOR_OUTSIDE, pixels[i])
-                if (inside) insideCount++
+                val iterations = escapeIterations(viewport.re(x), viewport.im(y))
+                assertEquals("pixel ($x, $y)", colors[iterations], pixels[i])
+                if (pixels[i] == COLOR_IN_SET) insideCount++
             }
         }
         // Guards against a degenerate viewport making the test pass trivially.
