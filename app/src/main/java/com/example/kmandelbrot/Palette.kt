@@ -9,12 +9,16 @@ const val COLOR_IN_SET = 0xFF000000.toInt() // black, ARGB
 
 private const val COLOR_RED = 0xFFFF0000.toInt() // ARGB
 private const val GREEN_SHIFT = 8
+private const val CHANNEL_MAX = 0xFF
 
 /**
  * The gradient of [PALETTE_SIZE] opaque ARGB colours from red (#FF0000, index 0) to yellow (#FFFF00, last index).
  * Red is always FF and blue always 00; green rises from 00 to FF, one step per colour.
  */
-fun redToYellowGradient(): IntArray = IntArray(PALETTE_SIZE) { green -> COLOR_RED or (green shl GREEN_SHIFT) }
+fun redToYellowGradient(): IntArray = IntArray(PALETTE_SIZE) { index ->
+    val green = index * CHANNEL_MAX / (PALETTE_SIZE - 1)
+    COLOR_RED or (green shl GREEN_SHIFT)
+}
 
 /**
  * Lookup table from the result of [escapeIterations] to an ARGB colour, of size [maxIterations] + 1.
