@@ -6,7 +6,7 @@ Guidance for Claude Code when working in this repository.
 
 KMandelbrot is an Android app, written in Kotlin, that draws the Mandelbrot fractal full screen.
 
-Current state: a bare Android Studio template. There is no Activity, no Kotlin source under `app/src/main`, and no launcher entry in `AndroidManifest.xml` yet.
+Current state: milestone 1 is implemented (static black-and-white render, full screen, both orientations). Zoom and pan are not implemented yet.
 
 ## Product requirements
 
@@ -31,7 +31,7 @@ Run from the project root (PowerShell on Windows; use `./gradlew` in Bash).
 | Debug build | `.\gradlew.bat assembleDebug` |
 | Install on a connected device/emulator | `.\gradlew.bat installDebug` |
 | Unit tests (JVM) | `.\gradlew.bat testDebugUnitTest` |
-| Single test class | `.\gradlew.bat testDebugUnitTest --tests "com.example.kmandelbrot.ExampleUnitTest"` |
+| Single test class | `.\gradlew.bat testDebugUnitTest --tests "com.example.kmandelbrot.ViewportTest"` |
 | Instrumented tests (needs a device) | `.\gradlew.bat connectedDebugAndroidTest` |
 | Lint | `.\gradlew.bat lintDebug` |
 
@@ -40,23 +40,28 @@ Run from the project root (PowerShell on Windows; use `./gradlew` in Bash).
 - Single module `app`, package and namespace `com.example.kmandelbrot`.
 - AGP 9.5.1 with Gradle Kotlin DSL; `minSdk` 34, `targetSdk`/`compileSdk` 37, Java 11.
 - AGP 9 has built-in Kotlin support. Do not add the `org.jetbrains.kotlin.android` plugin.
+- The Compose compiler plugin version must equal the Kotlin version bundled with AGP (`kotlin` in the version catalog, currently 2.2.10; check with `.\gradlew.bat buildEnvironment`). Libraries built against a newer Kotlin than that will not compile, which is why coroutines is pinned to 1.10.2.
 - Dependencies are declared in the version catalog `gradle/libs.versions.toml`. Add new ones there and reference them as `libs.…`; never hard-code versions in `build.gradle.kts`. Ask before adding a dependency.
-- UI is the Android View system (AppCompat + Material), not Jetpack Compose.
+- UI is Jetpack Compose (Compose BOM; `ui` and `foundation` only). There is no Material library yet; add Material 3 when the first real UI component is needed. AppCompat and the View-based Material library are not used.
+- The activity theme is the platform `android:Theme.Material.NoActionBar`.
 
 ## Architecture
 
 Keep the fractal maths separate from Android so it can be unit tested on the JVM.
 
-- **`MainActivity`** – single activity. Sets up edge-to-edge/immersive mode and hosts the fractal view. Needs an `<activity>` entry with the `MAIN`/`LAUNCHER` intent filter in the manifest, and a `NoActionBar` theme.
-- **`MandelbrotView`** – custom `View` that renders into a `Bitmap` sized to the view and draws it in `onDraw`. Re-render on `onSizeChanged` (this is what handles rotation) and when the viewport changes.
-- **Viewport** – plain Kotlin class holding the centre of the view in the complex plane and a scale (complex units per pixel). Converts pixel coordinates to complex coordinates. Using centre + a single scale, rather than fixed min/max bounds, keeps the aspect ratio correct in both orientations.
-- **Mandelbrot calculation** – plain Kotlin function(s) with no Android imports: iterate `z = z² + c` up to a maximum iteration count and report whether the point escapes (`|z| > 2`).
+- **`MainActivity`** – single `ComponentActivity`. Enables edge-to-edge, hides the system bars (shown briefly on an edge swipe) and hosts `MandelbrotScreen`. The image extends under the display cutout.
+- **`MandelbrotScreen`** – composable with one full-screen `Canvas`. Reports its pixel size to the ViewModel through `onSizeChanged` (this is what handles rotation, split-screen and unfolding) and draws the ViewModel's image.
+- **`MandelbrotViewModel`** – owns the `Bitmap` and the render job, so both survive rotation. A size change cancels the running render, creates a new bitmap and starts a new render. Each finished band is written into the bitmap on the main thread and bumps a `frame` counter that the canvas reads to redraw, which makes the image appear progressively.
+- **`renderMandelbrot`** (`MandelbrotRenderer.kt`) – plain Kotlin + coroutines, no Android imports. Calculates the image in bands of rows, in parallel, one worker per CPU core on `Dispatchers.Default`, and hands each band to a callback.
+- **`Viewport`** – plain Kotlin class holding the centre of the view in the complex plane and a scale (complex units per pixel). Converts pixel coordinates to complex coordinates. Using centre + a single scale keeps the image undistorted. `Viewport.fitWholeSet` gives the view that shows the whole set with a margin for any image size.
+- **`isInMandelbrotSet`** (`Mandelbrot.kt`) – plain Kotlin: iterate `z = z² + c` up to `MAX_ITERATIONS` (256) and report whether the point escapes (`|z| > 2`).
 
 ### Rules that are easy to get wrong
 
-- Never compute the fractal on the main thread or inside `onDraw`. Render off the main thread (coroutines on `Dispatchers.Default`), cancel a render that is in progress when a new one starts, and post the finished bitmap back to the view.
+- Never compute the fractal on the main thread or inside a draw lambda. Render off the main thread, and cancel a render that is in progress when a new one starts.
+- Only modify the bitmap on the main thread, so it is never changed while it is being drawn.
 - Write pixels in bulk (`IntArray` + `Bitmap.setPixels`), not one `setPixel` call at a time.
-- Preserve the viewport (centre and scale) across rotation and process death, using a `ViewModel` or saved instance state.
+- Today the viewport is always derived from the image size with `fitWholeSet`. Once zoom and pan exist, the viewport (centre and scale) must be preserved across rotation and process death.
 - Use `Double` for complex-plane coordinates. Zoom depth is limited by `Double` precision; that is acceptable for now.
 - Do not lock the orientation in the manifest.
 
