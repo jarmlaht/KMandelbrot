@@ -69,7 +69,7 @@ Keep the fractal maths separate from Android so it can be unit tested on the JVM
 
 ## Git
 
-- The default branch is meant to be `main` (the task skills assume it). The local branch is still `master`, with no commits and no GitHub remote yet.
+- The default branch is `main`, tracking `origin/main` on GitHub.
 - Commit or push only when asked.
 - Commit messages use the Conventional Commits format (`feat: …`, `fix: …`, `chore: …`) and end with the `Co-Authored-By` trailer for Claude.
 - Task work happens on `feature/task-<number>` branches created from `main`, merged through pull requests.
