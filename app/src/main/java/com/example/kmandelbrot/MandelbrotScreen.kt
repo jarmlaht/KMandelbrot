@@ -78,9 +78,10 @@ fun MandelbrotScreen(
                 centerIm = viewModel.imageViewport?.centerIm,
                 iterationLimit = viewModel.imageIterationLimit,
                 settings = viewModel.iterationSettings,
-                onClose = { settings ->
+                palette = viewModel.paletteColors,
+                onClose = { settings, palette ->
                     panelOpen = false
-                    viewModel.onIterationSettingsChanged(settings)
+                    viewModel.onSettingsChanged(settings, palette)
                 },
             )
         } else {

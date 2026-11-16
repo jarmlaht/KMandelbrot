@@ -14,4 +14,10 @@
     <string name="iteration_behaviour">Iteration behaviour</string>
     <string name="fixed_iteration_value">Fixed iteration value</string>
     <string name="scale_based_iteration_value">Scale-based iteration value</string>
+    <string name="palette_instruction">Choose two colors for the palette</string>
+    <string name="palette_reset">Reset</string>
+    <string name="palette_hue">Hue</string>
+    <string name="palette_brightness">Brightness</string>
+    <string name="palette_far_color">Color far from the set</string>
+    <string name="palette_edge_color">Color at the edge of the set</string>
 </resources>

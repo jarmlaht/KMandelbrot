@@ -36,6 +36,10 @@ class MandelbrotViewModel(private val savedState: SavedStateHandle) : ViewModel(
     var iterationSettings: IterationSettings by mutableStateOf(restoredIterationSettings())
         private set
 
+    /** The palette colours in use. Changed only when the info/settings view closes. */
+    var paletteColors: PaletteColors by mutableStateOf(restoredPaletteColors())
+        private set
+
     /** The iteration limit [image] was calculated with. Null until the first render starts. */
     var imageIterationLimit: Int? by mutableStateOf(null)
         private set
@@ -91,13 +95,19 @@ class MandelbrotViewModel(private val savedState: SavedStateHandle) : ViewModel(
         if (renderNeeded) startRender()
     }
 
-    /** Called when the info/settings view closes. Recalculates the image only if its iteration limit changes. */
-    fun onIterationSettingsChanged(settings: IterationSettings) {
-        if (settings == iterationSettings) return
-        iterationSettings = settings
-        saveIterationSettings(settings)
+    /**
+     * Called when the info/settings view closes. Recalculates the image only if its iteration limit or its
+     * colours change.
+     */
+    fun onSettingsChanged(iterationSettings: IterationSettings, paletteColors: PaletteColors) {
+        val paletteChanged = paletteColors != this.paletteColors
+        if (iterationSettings == this.iterationSettings && !paletteChanged) return
+        this.iterationSettings = iterationSettings
+        this.paletteColors = paletteColors
+        saveIterationSettings(iterationSettings)
+        savePaletteColors(paletteColors)
         val current = viewport ?: return
-        if (settings.limitFor(current.scale) != imageIterationLimit) startRender()
+        if (paletteChanged || iterationSettings.limitFor(current.scale) != imageIterationLimit) startRender()
     }
 
     /**
@@ -128,9 +138,10 @@ class MandelbrotViewModel(private val savedState: SavedStateHandle) : ViewModel(
 
         val iterationLimit = iterationSettings.limitFor(target.scale)
         imageIterationLimit = iterationLimit
+        val palette = paletteColors
         val width = target.width
         renderJob = viewModelScope.launch {
-            renderMandelbrot(target, iterationLimit) { firstRow, pixels ->
+            renderMandelbrot(target, iterationLimit, palette) { firstRow, pixels ->
                 // Write on the main thread so the bitmap is never modified while it is being drawn.
                 withContext(Dispatchers.Main) {
                     newBitmap.setPixels(pixels, 0, width, 0, firstRow, width, pixels.size / width)
@@ -171,7 +182,23 @@ class MandelbrotViewModel(private val savedState: SavedStateHandle) : ViewModel(
         )
     }
 
+    private fun savePaletteColors(palette: PaletteColors) {
+        savedState[KEY_PALETTE_FAR_COLOR] = palette.farColor
+        savedState[KEY_PALETTE_EDGE_COLOR] = palette.edgeColor
+    }
+
+    /** The saved colours; a missing saved value falls back to its default. */
+    private fun restoredPaletteColors(): PaletteColors {
+        val defaults = PaletteColors()
+        return PaletteColors(
+            farColor = savedState.get<Int>(KEY_PALETTE_FAR_COLOR) ?: defaults.farColor,
+            edgeColor = savedState.get<Int>(KEY_PALETTE_EDGE_COLOR) ?: defaults.edgeColor,
+        )
+    }
+
     private companion object {
+        const val KEY_PALETTE_FAR_COLOR = "paletteFarColor"
+        const val KEY_PALETTE_EDGE_COLOR = "paletteEdgeColor"
         const val KEY_CENTER_RE = "centerRe"
         const val KEY_CENTER_IM = "centerIm"
         const val KEY_SCALE = "scale"
