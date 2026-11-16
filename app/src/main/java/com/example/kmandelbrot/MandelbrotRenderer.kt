@@ -10,13 +10,15 @@ import kotlinx.coroutines.launch
  * Calculates the image for [viewport] in bands of [bandRows] rows.
  * One worker coroutine per CPU core runs on Dispatchers.Default; each takes the next
  * unclaimed band from a shared counter, so bands complete roughly top to bottom.
- * Each pixel is coloured by its escape iteration count within [maxIterations], see [iterationColors].
+ * Each pixel is coloured by its escape iteration count within [maxIterations] with the colours of
+ * [palette], see [iterationColors].
  * [onBand] is called once per band with its first row and its pixels (row-major, ARGB).
  * Cancelling the calling coroutine stops the workers.
  */
 suspend fun renderMandelbrot(
     viewport: Viewport,
     maxIterations: Int,
+    palette: PaletteColors = PaletteColors(),
     bandRows: Int = 16,
     onBand: suspend (firstRow: Int, pixels: IntArray) -> Unit,
 ) {
@@ -24,7 +26,7 @@ suspend fun renderMandelbrot(
     val height = viewport.height
     val bandCount = (height + bandRows - 1) / bandRows
     val nextBand = AtomicInteger(0)
-    val colors = iterationColors(maxIterations)
+    val colors = iterationColors(maxIterations, palette)
     val workerCount = minOf(Runtime.getRuntime().availableProcessors(), bandCount)
 
     coroutineScope {

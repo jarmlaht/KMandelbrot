@@ -13,7 +13,7 @@ class PaletteTest {
 
     @Test
     fun gradientHas256ColoursFromRedToYellow() {
-        val gradient = redToYellowGradient()
+        val gradient = colorGradient(red, yellow)
 
         assertEquals(256, gradient.size)
         assertEquals(red, gradient.first())
@@ -22,11 +22,69 @@ class PaletteTest {
 
     @Test
     fun gradientColoursAreOpaqueWithFullRedNoBlueAndGreenEqualToTheIndex() {
-        val gradient = redToYellowGradient()
+        val gradient = colorGradient(red, yellow)
 
         for (index in gradient.indices) {
             assertEquals("colour $index", red or (index shl 8), gradient[index])
         }
+    }
+
+    @Test
+    fun gradientBetweenOtherColoursStartsAndEndsOnThemWithTheRoundedMidpoint() {
+        val start = 0xFF102030.toInt()
+        val end = 0xFF3060F0.toInt()
+
+        val gradient = colorGradient(start, end)
+
+        assertEquals(256, gradient.size)
+        assertEquals(start, gradient.first())
+        assertEquals(end, gradient.last())
+        // At index 128 of 255: red 16 + 32 · 128/255 = 32.06, green 32 + 64 · 128/255 = 64.13,
+        // blue 48 + 192 · 128/255 = 144.38.
+        assertEquals(0xFF204090.toInt(), gradient[128])
+    }
+
+    @Test
+    fun gradientWithFallingChannelsRunsFromWhiteToBlack() {
+        val gradient = colorGradient(0xFFFFFFFF.toInt(), 0xFF000000.toInt())
+
+        for (index in gradient.indices) {
+            val channel = 255 - index
+            val expected = 0xFF000000.toInt() or (channel shl 16) or (channel shl 8) or channel
+            assertEquals("colour $index", expected, gradient[index])
+        }
+    }
+
+    @Test
+    fun gradientBetweenIdenticalColoursIsThatColour() {
+        val color = 0xFF336699.toInt()
+
+        assertTrue(colorGradient(color, color).all { it == color })
+    }
+
+    @Test
+    fun gradientColoursAreOpaqueEvenIfTheGivenColoursAreNot() {
+        val gradient = colorGradient(0x00FF0000, 0x80FFFF00.toInt())
+
+        assertEquals(red, gradient.first())
+        assertEquals(yellow, gradient.last())
+    }
+
+    @Test
+    fun iterationColorsUsesTheGivenPalette() {
+        val blue = 0xFF0000FF.toInt()
+        val white = 0xFFFFFFFF.toInt()
+
+        val colors = iterationColors(maxIterations = 100, palette = PaletteColors(farColor = blue, edgeColor = white))
+
+        assertEquals(COLOR_IN_SET, colors[NOT_ESCAPED])
+        assertEquals(blue, colors[1])
+        assertEquals(white, colors[100])
+    }
+
+    @Test
+    fun defaultPaletteIsRedToYellow() {
+        assertEquals(PaletteColors(farColor = red, edgeColor = yellow), PaletteColors())
     }
 
     @Test

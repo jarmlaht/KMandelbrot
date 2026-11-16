@@ -11,10 +11,10 @@ class MandelbrotRendererTest {
     private val viewport = Viewport.fitWholeSet(width = 60, height = 50)
     private val maxIterations = 100
 
-    private fun render(): Map<Int, IntArray> {
+    private fun render(palette: PaletteColors = PaletteColors()): Map<Int, IntArray> {
         val bands = mutableMapOf<Int, IntArray>()
         runBlocking {
-            renderMandelbrot(viewport, maxIterations, bandRows = 16) { firstRow, pixels ->
+            renderMandelbrot(viewport, maxIterations, palette, bandRows = 16) { firstRow, pixels ->
                 synchronized(bands) {
                     assertTrue("band at row $firstRow delivered twice", bands.put(firstRow, pixels) == null)
                 }
@@ -52,5 +52,23 @@ class MandelbrotRendererTest {
         // Guards against a degenerate viewport making the test pass trivially.
         assertTrue(insideCount > 0)
         assertTrue(insideCount < viewport.width * viewport.height)
+    }
+
+    @Test
+    fun pixelsUseTheGivenPalette() {
+        val palette = PaletteColors(farColor = 0xFF0000FF.toInt(), edgeColor = 0xFFFFFFFF.toInt())
+        val bands = render(palette)
+        val colors = iterationColors(maxIterations, palette)
+
+        for ((firstRow, pixels) in bands) {
+            for (i in pixels.indices) {
+                val x = i % viewport.width
+                val y = firstRow + i / viewport.width
+                val iterations = escapeIterations(viewport.re(x), viewport.im(y), maxIterations)
+                assertEquals("pixel ($x, $y)", colors[iterations], pixels[i])
+            }
+        }
+        // The far colour is used: the corner of the image escapes on the first iteration.
+        assertEquals(palette.farColor, bands.getValue(0)[0])
     }
 }

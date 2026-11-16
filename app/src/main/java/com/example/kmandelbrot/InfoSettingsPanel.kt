@@ -34,6 +34,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -96,8 +98,9 @@ fun MenuButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
 
 /**
  * The info/settings view with the area around it, covering the whole screen. [onClose] is called with the
- * settings to apply when the 'X' or the area outside the view is tapped.
- * [centerRe], [centerIm] and [iterationLimit] describe the image on screen; [settings] are those in use.
+ * settings and palette colours to apply when the 'X' or the area outside the view is tapped.
+ * [centerRe], [centerIm] and [iterationLimit] describe the image on screen; [settings] and [palette] are
+ * those in use.
  */
 @Composable
 fun InfoSettingsPanel(
@@ -105,14 +108,36 @@ fun InfoSettingsPanel(
     centerIm: Double?,
     iterationLimit: Int?,
     settings: IterationSettings,
-    onClose: (IterationSettings) -> Unit,
+    palette: PaletteColors,
+    onClose: (IterationSettings, PaletteColors) -> Unit,
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(PanelTab.INFO) }
     var limitText by rememberSaveable { mutableStateOf(settings.fixedLimit.toString()) }
     var mode by rememberSaveable { mutableStateOf(settings.mode) }
+
+    // The edited palette: the two colours, which box the picker edits, and the position of the picker.
+    var farColor by rememberSaveable { mutableIntStateOf(palette.farColor) }
+    var edgeColor by rememberSaveable { mutableIntStateOf(palette.edgeColor) }
+    var edgeSelected by rememberSaveable { mutableStateOf(false) }
+    var hue by rememberSaveable { mutableFloatStateOf(pickerPositionOf(palette.farColor).hue) }
+    var tone by rememberSaveable { mutableFloatStateOf(pickerPositionOf(palette.farColor).tone) }
+
+    fun setSelectedColor(color: Int) {
+        if (edgeSelected) edgeColor = color else farColor = color
+    }
+
+    fun movePickerTo(color: Int) {
+        val position = pickerPositionOf(color)
+        hue = position.hue
+        tone = position.tone
+    }
+
     val close = {
-        // An empty or out-of-range field keeps the previous value.
-        onClose(IterationSettings(mode, parseFixedIterationLimit(limitText) ?: settings.fixedLimit))
+        onClose(
+            // An empty or out-of-range field keeps the previous value.
+            IterationSettings(mode, parseFixedIterationLimit(limitText) ?: settings.fixedLimit),
+            PaletteColors(farColor, edgeColor),
+        )
     }
 
     // Always the dark colours, so the view looks the same in the light and dark system themes.
@@ -140,7 +165,31 @@ fun InfoSettingsPanel(
                     ) {
                         when (selectedTab) {
                             PanelTab.INFO -> InfoView(centerRe, centerIm, iterationLimit)
-                            PanelTab.PALETTE -> Unit // Defined in a separate issue.
+                            PanelTab.PALETTE -> PaletteView(
+                                farColor = farColor,
+                                edgeColor = edgeColor,
+                                edgeSelected = edgeSelected,
+                                hue = hue,
+                                tone = tone,
+                                onHueChange = {
+                                    hue = it
+                                    setSelectedColor(pickerColor(hue, tone))
+                                },
+                                onToneChange = {
+                                    tone = it
+                                    setSelectedColor(pickerColor(hue, tone))
+                                },
+                                onBoxSelected = { edge ->
+                                    // Only the picker moves; the colours stay as they are.
+                                    edgeSelected = edge
+                                    movePickerTo(if (edge) edgeColor else farColor)
+                                },
+                                onReset = {
+                                    farColor = COLOR_RED
+                                    edgeColor = COLOR_YELLOW
+                                    movePickerTo(if (edgeSelected) edgeColor else farColor)
+                                },
+                            )
                             PanelTab.SETTINGS -> SettingsView(
                                 limitText = limitText,
                                 onLimitTextChange = { limitText = it },
