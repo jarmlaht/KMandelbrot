@@ -31,7 +31,7 @@ class PaletteTest {
 
     @Test
     fun iterationColorsHasOneEntryPerPossibleResult() {
-        assertEquals(MAX_ITERATIONS + 1, iterationColors().size)
+        assertEquals(BASE_ITERATION_LIMIT + 1, iterationColors().size)
     }
 
     @Test
@@ -45,7 +45,7 @@ class PaletteTest {
         val colors = iterationColors()
 
         assertEquals(red, colors[1])
-        assertEquals(yellow, colors[MAX_ITERATIONS])
+        assertEquals(yellow, colors[BASE_ITERATION_LIMIT])
     }
 
     @Test
@@ -64,12 +64,22 @@ class PaletteTest {
     fun coloursNeverGetRedderAsIterationsIncrease() {
         val colors = iterationColors()
 
-        for (iterations in 2..MAX_ITERATIONS) {
+        for (iterations in 2..BASE_ITERATION_LIMIT) {
             assertTrue(
                 "iterations $iterations",
                 green(colors[iterations]) >= green(colors[iterations - 1]),
             )
         }
+    }
+
+    @Test
+    fun endPointsHoldForTheHighestIterationLimit() {
+        val colors = iterationColors(maxIterations = ITERATION_LIMIT_CAP)
+
+        assertEquals(ITERATION_LIMIT_CAP + 1, colors.size)
+        assertEquals(COLOR_IN_SET, colors[NOT_ESCAPED])
+        assertEquals(red, colors[1])
+        assertEquals(yellow, colors[ITERATION_LIMIT_CAP])
     }
 
     @Test

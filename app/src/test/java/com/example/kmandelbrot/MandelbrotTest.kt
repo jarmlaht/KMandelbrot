@@ -40,4 +40,54 @@ class MandelbrotTest {
         assertEquals(5, escapeIterations(0.5, 0.0, maxIterations = 5))
         assertEquals(NOT_ESCAPED, escapeIterations(0.5, 0.0, maxIterations = 4))
     }
+
+    @Test
+    fun pointsInTheMainCardioidAndPeriod2BulbDoNotEscape() {
+        assertEquals(NOT_ESCAPED, escapeIterations(-0.1, 0.1))
+        assertEquals(NOT_ESCAPED, escapeIterations(0.2, 0.3))
+        assertEquals(NOT_ESCAPED, escapeIterations(-1.0, 0.2))
+        assertEquals(NOT_ESCAPED, escapeIterations(-1.2, 0.0))
+    }
+
+    @Test
+    fun pointsJustOutsideTheCardioidAndBulbStillEscape() {
+        // Between the cardioid and the period-2 bulb, just off the real axis.
+        assertTrue(escapeIterations(-0.75, 0.1) > 0)
+        // Just above the top of the period-2 bulb (radius 0.25).
+        assertTrue(escapeIterations(-1.0, 0.3) > 0)
+        // Just right of the cardioid's cusp.
+        assertTrue(escapeIterations(0.26, 0.0) > 0)
+    }
+
+    @Test
+    fun iterationLimitIsTheBaseLimitAtAndAboveTheReferenceScale() {
+        assertEquals(BASE_ITERATION_LIMIT, iterationLimitForScale(0.0025))
+        assertEquals(BASE_ITERATION_LIMIT, iterationLimitForScale(0.01))
+    }
+
+    @Test
+    fun iterationLimitGrowsBy940ForEveryTenfoldMagnification() {
+        assertEquals(1196, iterationLimitForScale(0.0025 / 10))
+        assertEquals(3076, iterationLimitForScale(0.0025 / 1e3))
+        assertEquals(5896, iterationLimitForScale(0.0025 / 1e6))
+        assertEquals(8716, iterationLimitForScale(0.0025 / 1e9))
+    }
+
+    @Test
+    fun iterationLimitNeverDecreasesAsTheScaleShrinks() {
+        var scale = 0.01
+        var previous = iterationLimitForScale(scale)
+        while (scale > Viewport.MIN_SCALE) {
+            scale /= 2
+            val limit = iterationLimitForScale(scale)
+            assertTrue("scale $scale", limit >= previous)
+            previous = limit
+        }
+    }
+
+    @Test
+    fun iterationLimitIsCappedAtTheDeepestZoom() {
+        assertEquals(ITERATION_LIMIT_CAP, iterationLimitForScale(Viewport.MIN_SCALE))
+        assertEquals(ITERATION_LIMIT_CAP, iterationLimitForScale(1e-30))
+    }
 }
