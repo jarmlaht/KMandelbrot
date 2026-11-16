@@ -26,7 +26,7 @@ fun redToYellowGradient(): IntArray = IntArray(PALETTE_SIZE) { index ->
  * position ln(n) / ln(maxIterations) along the gradient, so 1 iteration is red and
  * [maxIterations] iterations is yellow.
  */
-fun iterationColors(maxIterations: Int = MAX_ITERATIONS): IntArray {
+fun iterationColors(maxIterations: Int = BASE_ITERATION_LIMIT): IntArray {
     require(maxIterations >= 2) { "maxIterations must be at least 2, was $maxIterations" }
     val gradient = redToYellowGradient()
     val logMaxIterations = ln(maxIterations.toDouble())

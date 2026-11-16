@@ -6,7 +6,7 @@ Guidance for Claude Code when working in this repository.
 
 KMandelbrot is an Android app, written in Kotlin, that draws the Mandelbrot fractal full screen.
 
-Current state: the app renders the whole set full screen in both orientations, black inside the set and coloured outside it by escape iteration count on a red-to-yellow gradient. Zoom and pan are not implemented yet.
+Current state: the app renders the set full screen in both orientations, black inside the set and coloured outside it by escape iteration count on a red-to-yellow gradient. The view can be zoomed with a pinch and moved with a drag.
 
 ## Product requirements
 
@@ -18,8 +18,8 @@ Current state: the app renders the whole set full screen in both orientations, b
 
 1. **First version (done):** render a static black-and-white Mandelbrot set full screen, correct in both orientations.
 2. **Colours (done):** points inside the set black; points outside coloured by escape iteration count on a 256-colour gradient from red (`#FF0000`, far from the set) to yellow (`#FFFF00`, at its edge).
-3. **Zoom and pan** with touch gestures.
-4. Later: selectable colour palettes, smooth colouring, deeper zoom.
+3. **Zoom and pan (done):** pinch to zoom, drag to pan. The current image follows the fingers; the sharp image is recalculated when they lift. Zooming out stops when the whole set fits; the screen centre stays within the set's rectangle; the iteration limit grows with zoom depth.
+4. Later: selectable colour palettes, smooth colouring, deeper zoom, double-tap, on-screen controls.
 
 Build only what the current task needs. Do not add settings screens, extra palettes or other extras before they are asked for.
 
@@ -43,7 +43,7 @@ Run from the project root (PowerShell on Windows; use `./gradlew` in Bash).
 - AGP 9 has built-in Kotlin support. Do not add the `org.jetbrains.kotlin.android` plugin.
 - The Compose compiler plugin version must equal the Kotlin version bundled with AGP (`kotlin` in the version catalog, currently 2.2.10; check with `.\gradlew.bat buildEnvironment`). Avoid libraries built against a newer Kotlin than that; this is why coroutines is pinned to 1.10.2 (1.11.0 is built against Kotlin 2.2.20).
 - Dependencies are declared in the version catalog `gradle/libs.versions.toml`. Add new ones there and reference them as `libs.…`; never hard-code versions in `build.gradle.kts`. Ask before adding a dependency.
-- UI is Jetpack Compose (Compose BOM; `ui` and `foundation` only). There is no Material library yet; add Material 3 when the first real UI component is needed. AppCompat and the View-based Material library are not used.
+- UI is Jetpack Compose (Compose BOM; `ui` and `foundation` only), with `lifecycle-viewmodel-compose` and `lifecycle-viewmodel-savedstate` for the ViewModel. There is no Material library yet; add Material 3 when the first real UI component is needed. AppCompat and the View-based Material library are not used.
 - The activity theme is the platform `android:Theme.Material.NoActionBar`.
 
 ## Architecture
@@ -51,12 +51,16 @@ Run from the project root (PowerShell on Windows; use `./gradlew` in Bash).
 Keep the fractal maths separate from Android so it can be unit tested on the JVM.
 
 - **`MainActivity`** – single `ComponentActivity`. Enables edge-to-edge, hides the system bars (shown briefly on an edge swipe) and hosts `MandelbrotScreen`. The image extends under the display cutout.
-- **`MandelbrotScreen`** – composable with one full-screen `Canvas`. Reports its pixel size to the ViewModel through `onSizeChanged` (this is what handles rotation, split-screen and unfolding) and draws the ViewModel's image.
-- **`MandelbrotViewModel`** – owns the `Bitmap` and the render job, so both survive rotation. A size change cancels the running render, creates a new bitmap and starts a new render. Each finished band is written into the bitmap on the main thread and bumps a `frame` counter that the canvas reads to redraw, which makes the image appear progressively.
-- **`renderMandelbrot`** (`MandelbrotRenderer.kt`) – plain Kotlin + coroutines, no Android imports. Calculates the image in bands of rows, in parallel, one worker per CPU core on `Dispatchers.Default`, and hands each band to a callback. Each pixel's colour is looked up from the `iterationColors` table by its escape iteration count.
-- **`Viewport`** – plain Kotlin class holding the centre of the view in the complex plane and a scale (complex units per pixel). Converts pixel coordinates to complex coordinates. Using centre + a single scale keeps the image undistorted. `Viewport.fitWholeSet` gives the view that shows the whole set with a margin for any image size.
-- **`escapeIterations`** (`Mandelbrot.kt`) – plain Kotlin: iterate `z = z² + c` up to `MAX_ITERATIONS` (256) and return the iteration (1..256) on which the point escapes (`|z| > 2`), or `NOT_ESCAPED` (0) for a point treated as inside the set.
-- **`Palette.kt`** – plain Kotlin: `redToYellowGradient` builds the 256 gradient colours, and `iterationColors` builds the lookup table from the result of `escapeIterations` to an ARGB colour. Entry 0 is black (inside the set); entry n is the gradient colour at position ln(n) / ln(256), so the colours come in stepped bands, one fixed colour per iteration count.
+- **`MandelbrotScreen`** – composable with one full-screen `Canvas`. Reports its pixel size to the ViewModel through `onSizeChanged` (this is what handles rotation, split-screen and unfolding). Reports pinch and drag steps from `detectTransformGestures` through `onTransform`, and all fingers lifting through `onGestureEnd` (a second `pointerInput`, because `detectTransformGestures` has no end callback). Draws the ViewModel's image moved and scaled by `viewport.placementOf(imageViewport)`, so during a gesture the existing image follows the fingers.
+- **`MandelbrotViewModel`** – owns the current `viewport` (what the user is looking at), the `Bitmap` with the `imageViewport` it was made for, and the render job, so all survive rotation. Centre and scale are also saved in `SavedStateHandle`, which restores the view after Android kills the process in the background; a fresh start after the app is swiped away shows the whole set.
+  - `onSizeChanged`: the first call restores the saved view or fits the whole set; a new size keeps centre and scale (`resizedTo`).
+  - `onTransform`: updates `viewport` and cancels a running render. `onGestureEnd`: starts a render if the view changed.
+  - `startRender`: creates a new bitmap, draws the previous image into it moved and scaled as a preview, then renders the sharp image over it. Each finished band is written into the bitmap on the main thread and bumps a `frame` counter that the canvas reads to redraw, so the preview is replaced band by band. Areas the preview does not cover are transparent, i.e. black.
+- **`renderMandelbrot`** (`MandelbrotRenderer.kt`) – plain Kotlin + coroutines, no Android imports. Calculates the image for a viewport and an iteration limit in bands of rows, in parallel, one worker per CPU core on `Dispatchers.Default`, and hands each band to a callback. Each pixel's colour is looked up from the `iterationColors` table by its escape iteration count.
+- **`Viewport`** – plain Kotlin class holding the centre of the view in the complex plane and a scale (complex units per pixel). Converts pixel coordinates to complex coordinates. Using centre + a single scale keeps the image undistorted. `Viewport.fitWholeSet` gives the view that shows the whole set with a margin for any image size. `transformedBy` applies one pinch/drag step, keeping the point under the fingers fixed; `resizedTo` keeps centre and scale for a new image size; `clamped` enforces the limits; `placementOf` says where an image made for another viewport must be drawn to line up with this one.
+- **`escapeIterations`** (`Mandelbrot.kt`) – plain Kotlin: iterate `z = z² + c` up to an iteration limit and return the iteration on which the point escapes (`|z| > 2`), or `NOT_ESCAPED` (0) for a point treated as inside the set. Points in the main cardioid or the period-2 bulb are recognised by formula and return `NOT_ESCAPED` without iterating; this changes no result, only the time taken.
+- **`iterationLimitForScale`** (`Mandelbrot.kt`) – the iteration limit for a scale: `BASE_ITERATION_LIMIT` (256) at a scale of 0.0025 and above, plus 940 for every tenfold magnification, capped at `ITERATION_LIMIT_CAP` (10,000), which is reached just before the deepest zoom. It depends on the scale only, not on the screen size.
+- **`Palette.kt`** – plain Kotlin: `redToYellowGradient` builds the 256 gradient colours, and `iterationColors` builds the lookup table from the result of `escapeIterations` to an ARGB colour. Entry 0 is black (inside the set); entry n is the gradient colour at position ln(n) / ln(limit), so the colours come in stepped bands and the gradient always spans 1 iteration (red) to the current limit (yellow). A given iteration count therefore gets a slightly redder colour as the limit grows with zoom.
 - The canvas and window backgrounds are black, and a new bitmap starts transparent, so the area that is not yet calculated is black.
 
 ### Rules that are easy to get wrong
@@ -64,8 +68,10 @@ Keep the fractal maths separate from Android so it can be unit tested on the JVM
 - Never compute the fractal on the main thread or inside a draw lambda. Render off the main thread, and cancel a render that is in progress when a new one starts.
 - Only modify the bitmap on the main thread, so it is never changed while it is being drawn.
 - Write pixels in bulk (`IntArray` + `Bitmap.setPixels`), not one `setPixel` call at a time.
-- Today the viewport is always derived from the image size with `fitWholeSet`. Once zoom and pan exist, the viewport (centre and scale) must be preserved across rotation and process death.
-- Use `Double` for complex-plane coordinates. Zoom depth is limited by `Double` precision; that is acceptable for now.
+- The viewport (centre and scale) must be preserved across rotation and process death: keep it in the ViewModel and in `SavedStateHandle`, never re-derive it from the image size except on a fresh start.
+- Every new viewport goes through `clamped`: scale between `Viewport.MIN_SCALE` (1e-13, the `Double` precision limit) and the `fitWholeSet` scale, centre inside the set's rectangle.
+- Do not recycle the previous bitmap when replacing it; a frame that is still being drawn may reference it.
+- Use `Double` for complex-plane coordinates. Zoom depth is limited by `Double` precision (`Viewport.MIN_SCALE`); that is acceptable for now.
 - Do not lock the orientation in the manifest.
 
 ## Conventions

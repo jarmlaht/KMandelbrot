@@ -9,11 +9,12 @@ class MandelbrotRendererTest {
 
     // 50 rows with bands of 16 gives three full bands and a partial last band of 2 rows.
     private val viewport = Viewport.fitWholeSet(width = 60, height = 50)
+    private val maxIterations = 100
 
     private fun render(): Map<Int, IntArray> {
         val bands = mutableMapOf<Int, IntArray>()
         runBlocking {
-            renderMandelbrot(viewport, bandRows = 16) { firstRow, pixels ->
+            renderMandelbrot(viewport, maxIterations, bandRows = 16) { firstRow, pixels ->
                 synchronized(bands) {
                     assertTrue("band at row $firstRow delivered twice", bands.put(firstRow, pixels) == null)
                 }
@@ -36,14 +37,14 @@ class MandelbrotRendererTest {
     @Test
     fun everyPixelHasTheColourOfItsEscapeIterationCount() {
         val bands = render()
-        val colors = iterationColors()
+        val colors = iterationColors(maxIterations)
 
         var insideCount = 0
         for ((firstRow, pixels) in bands) {
             for (i in pixels.indices) {
                 val x = i % viewport.width
                 val y = firstRow + i / viewport.width
-                val iterations = escapeIterations(viewport.re(x), viewport.im(y))
+                val iterations = escapeIterations(viewport.re(x), viewport.im(y), maxIterations)
                 assertEquals("pixel ($x, $y)", colors[iterations], pixels[i])
                 if (pixels[i] == COLOR_IN_SET) insideCount++
             }
