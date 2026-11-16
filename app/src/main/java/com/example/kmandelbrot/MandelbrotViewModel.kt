@@ -32,6 +32,14 @@ class MandelbrotViewModel(private val savedState: SavedStateHandle) : ViewModel(
     var viewport: Viewport? by mutableStateOf(null)
         private set
 
+    /** The iteration settings in use. Changed only when the info/settings view closes. */
+    var iterationSettings: IterationSettings by mutableStateOf(restoredIterationSettings())
+        private set
+
+    /** The iteration limit [image] was calculated with. Null until the first render starts. */
+    var imageIterationLimit: Int? by mutableStateOf(null)
+        private set
+
     /** Incremented each time a band is written into [image], to trigger a redraw. */
     var frame: Int by mutableIntStateOf(0)
         private set
@@ -83,6 +91,15 @@ class MandelbrotViewModel(private val savedState: SavedStateHandle) : ViewModel(
         if (renderNeeded) startRender()
     }
 
+    /** Called when the info/settings view closes. Recalculates the image only if its iteration limit changes. */
+    fun onIterationSettingsChanged(settings: IterationSettings) {
+        if (settings == iterationSettings) return
+        iterationSettings = settings
+        saveIterationSettings(settings)
+        val current = viewport ?: return
+        if (settings.limitFor(current.scale) != imageIterationLimit) startRender()
+    }
+
     /**
      * Replaces [image] with a preview of [viewport] made from the previous image, then renders the sharp
      * image into it band by band.
@@ -109,9 +126,11 @@ class MandelbrotViewModel(private val savedState: SavedStateHandle) : ViewModel(
         imageViewport = target
         saveViewport(target)
 
+        val iterationLimit = iterationSettings.limitFor(target.scale)
+        imageIterationLimit = iterationLimit
         val width = target.width
         renderJob = viewModelScope.launch {
-            renderMandelbrot(target, iterationLimitForScale(target.scale)) { firstRow, pixels ->
+            renderMandelbrot(target, iterationLimit) { firstRow, pixels ->
                 // Write on the main thread so the bitmap is never modified while it is being drawn.
                 withContext(Dispatchers.Main) {
                     newBitmap.setPixels(pixels, 0, width, 0, firstRow, width, pixels.size / width)
@@ -134,9 +153,29 @@ class MandelbrotViewModel(private val savedState: SavedStateHandle) : ViewModel(
         return Viewport(centerRe, centerIm, scale, width, height).clamped()
     }
 
+    private fun saveIterationSettings(settings: IterationSettings) {
+        savedState[KEY_ITERATION_MODE] = settings.mode.name
+        savedState[KEY_FIXED_ITERATION_LIMIT] = settings.fixedLimit
+    }
+
+    /** The saved settings; a missing or invalid saved value falls back to its default. */
+    private fun restoredIterationSettings(): IterationSettings {
+        val defaults = IterationSettings()
+        val savedMode = savedState.get<String>(KEY_ITERATION_MODE)
+        val savedLimit = savedState.get<Int>(KEY_FIXED_ITERATION_LIMIT)
+        return IterationSettings(
+            mode = IterationMode.entries.firstOrNull { it.name == savedMode } ?: defaults.mode,
+            fixedLimit = savedLimit
+                ?.takeIf { it in MIN_FIXED_ITERATION_LIMIT..MAX_FIXED_ITERATION_LIMIT }
+                ?: defaults.fixedLimit,
+        )
+    }
+
     private companion object {
         const val KEY_CENTER_RE = "centerRe"
         const val KEY_CENTER_IM = "centerIm"
         const val KEY_SCALE = "scale"
+        const val KEY_ITERATION_MODE = "iterationMode"
+        const val KEY_FIXED_ITERATION_LIMIT = "fixedIterationLimit"
     }
 }

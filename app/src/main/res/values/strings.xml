@@ -1,3 +1,17 @@
 <resources>
     <string name="app_name">KMandelbrot</string>
+    <string name="open_menu">Open menu</string>
+    <string name="close_menu">Close</string>
+    <string name="tab_info">Info</string>
+    <string name="tab_palette">Palette</string>
+    <string name="tab_settings">Settings</string>
+    <string name="image_center_coordinates">Image center coordinates</string>
+    <string name="coordinate_x">x: %1$s</string>
+    <string name="coordinate_y">y: %1$s</string>
+    <string name="current_iteration_count">Current iteration count</string>
+    <string name="maximum_iteration">Maximum iteration</string>
+    <string name="maximum_iteration_range">%1$,d – %2$,d</string>
+    <string name="iteration_behaviour">Iteration behaviour</string>
+    <string name="fixed_iteration_value">Fixed iteration value</string>
+    <string name="scale_based_iteration_value">Scale-based iteration value</string>
 </resources>
