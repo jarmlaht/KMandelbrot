@@ -35,10 +35,15 @@ fun MandelbrotScreen(
                 // detectTransformGestures has no end callback, so watch for all fingers lifting.
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
-                    do {
-                        val event = awaitPointerEvent(PointerEventPass.Final)
-                    } while (event.changes.any { it.pressed })
-                    viewModel.onGestureEnd()
+                    try {
+                        do {
+                            val event = awaitPointerEvent(PointerEventPass.Final)
+                        } while (event.changes.any { it.pressed })
+                    } finally {
+                        // Also runs when the system takes the gesture over (e.g. an edge swipe),
+                        // so a view moved by a cancelled gesture is still recalculated.
+                        viewModel.onGestureEnd()
+                    }
                 }
             }
     ) {
